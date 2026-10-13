@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="Demo09_做了个数学函数/Demo09_做了个数学函数.vcxproj" Id="36cc81c2-b69e-49f5-80c5-8f43aecd298e" />
+</Solution>

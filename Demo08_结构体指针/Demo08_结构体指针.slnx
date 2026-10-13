@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="Demo08_结构体指针/Demo08_结构体指针.vcxproj" Id="3bb8b434-ac86-47cc-8d89-7e6256b5ef0f" />
+</Solution>

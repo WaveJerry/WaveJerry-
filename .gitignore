@@ -1,0 +1,16 @@
+cat > .gitignore <<'EOF'
+# VS缓存目录
+.vs/
+*.suo
+*.user
+*.vcxproj.user
+
+# 编译输出
+Debug/
+Release/
+x64/
+x86/
+*.obj
+*.exe
+*.pdb
+EOF

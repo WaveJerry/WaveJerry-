@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="Demo07_结构体函数/Demo07_结构体函数.vcxproj" Id="86e545e3-8dc4-4639-9eca-00689abca4dd" />
+</Solution>

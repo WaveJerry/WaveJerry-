@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="Demo05_数组指针vs指针数组/Demo05_数组指针vs指针数组.vcxproj" Id="c74ad608-b2bf-4cb7-916d-e5e8d8263007" />
+</Solution>
