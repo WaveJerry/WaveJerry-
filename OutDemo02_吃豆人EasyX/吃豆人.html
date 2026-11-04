@@ -1,0 +1,806 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080d21">
+  <title>吃豆人 · Pac-Man</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #080d21;
+      --panel: #101a35;
+      --panel-border: #263d72;
+      --text: #edf2ff;
+      --muted: #9baed6;
+      --yellow: #ffda53;
+      --blue: #568cff;
+    }
+    * { box-sizing: border-box; }
+    html { min-height: 100%; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--text);
+      font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 50% -10%, #1b3476 0, transparent 42%),
+        radial-gradient(circle at 100% 100%, #151e47 0, transparent 34%),
+        var(--bg);
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: .2;
+      background-image: radial-gradient(#a9c5ff 1px, transparent 1px);
+      background-size: 32px 32px;
+      mask-image: linear-gradient(to bottom, #000, transparent 65%);
+    }
+    button { font: inherit; cursor: pointer; }
+    button:focus-visible {
+      outline: 3px solid #fff;
+      outline-offset: 3px;
+    }
+    .app {
+      position: relative;
+      width: min(100% - 28px, 660px);
+      margin: 0 auto;
+      padding: 24px 0 28px;
+    }
+    .topbar, .brand, .actions, .stats, .game-controls {
+      display: flex;
+      align-items: center;
+    }
+    .topbar { justify-content: space-between; gap: 14px; margin-bottom: 18px; }
+    .brand { gap: 13px; min-width: 0; }
+    .brand-icon {
+      flex: 0 0 auto;
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: conic-gradient(var(--yellow) 0 64deg, transparent 64deg 116deg, var(--yellow) 116deg);
+      filter: drop-shadow(0 0 12px #f5b93280);
+    }
+    h1 { margin: 0; font-size: clamp(24px, 6vw, 34px); line-height: 1.15; letter-spacing: .03em; }
+    .subtitle { margin: 3px 0 0; color: var(--muted); font-size: 12px; letter-spacing: .13em; }
+    .sound-button, .secondary-button {
+      color: var(--text);
+      background: #192747;
+      border: 1px solid #36517f;
+      border-radius: 11px;
+      padding: 10px 14px;
+      transition: background .15s, transform .15s;
+    }
+    .sound-button:hover, .secondary-button:hover, .direction:hover { background: #23365f; }
+    .sound-button:active, .secondary-button:active, .primary-button:active, .direction:active { transform: scale(.97); }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .stat {
+      min-width: 0;
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      background: #111b37cf;
+      padding: 10px 12px;
+    }
+    .stat-label { color: var(--muted); font-size: 12px; }
+    .stat-value {
+      display: block;
+      margin-top: 3px;
+      color: var(--yellow);
+      font: 700 23px/1.2 "Consolas", "Microsoft YaHei", monospace;
+      white-space: nowrap;
+    }
+    .stat-value.lives { letter-spacing: 2px; font-size: 21px; }
+    .board-frame {
+      position: relative;
+      width: min(100%, 608px);
+      margin: 0 auto;
+      padding: 9px;
+      border: 1px solid #3359a1;
+      border-radius: 18px;
+      background: #07112d;
+      box-shadow: 0 0 0 1px #7ba6ff18 inset, 0 18px 55px #0008, 0 0 34px #2254bb30;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 1;
+      border-radius: 9px;
+      touch-action: none;
+    }
+    .overlay {
+      position: absolute;
+      inset: 9px;
+      z-index: 2;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      border-radius: 9px;
+      background: #06102bc9;
+      backdrop-filter: blur(4px);
+    }
+    .overlay.hidden { display: none; }
+    .overlay-card {
+      width: min(100%, 390px);
+      padding: 27px 24px;
+      text-align: center;
+      border: 1px solid #4c73bb;
+      border-radius: 17px;
+      background: linear-gradient(155deg, #1b2c58, #0d1733);
+      box-shadow: 0 12px 40px #0008, 0 0 26px #3f6bc344 inset;
+    }
+    .overlay-title { margin: 0; color: var(--yellow); font-size: clamp(26px, 6vw, 35px); }
+    .overlay-text { margin: 10px 0 20px; color: #d0dffc; line-height: 1.65; font-size: 15px; }
+    .primary-button {
+      min-height: 44px;
+      padding: 10px 22px;
+      color: #172034;
+      font-weight: 800;
+      background: linear-gradient(#ffe78b, #ffcd42);
+      border: 0;
+      border-radius: 11px;
+      box-shadow: 0 6px 16px #ffce3950;
+      transition: filter .15s, transform .15s;
+    }
+    .primary-button:hover { filter: brightness(1.08); }
+    .game-controls {
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 15px;
+      flex-wrap: wrap;
+    }
+    .actions { gap: 9px; }
+    .status {
+      min-height: 24px;
+      color: #c3d5fa;
+      font-size: 14px;
+      text-align: right;
+      flex: 1;
+    }
+    .instructions {
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.7;
+      text-align: center;
+    }
+    kbd {
+      display: inline-block;
+      min-width: 22px;
+      padding: 1px 5px;
+      border: 1px solid #4d618e;
+      border-radius: 5px;
+      background: #192744;
+      color: #e4edff;
+      font: inherit;
+    }
+    .touch-controls { display: none; margin: 15px auto 0; width: 168px; }
+    .touch-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 52px);
+      grid-template-rows: repeat(2, 52px);
+      justify-content: center;
+      gap: 6px;
+    }
+    .direction {
+      color: #f2f6ff;
+      background: #1a2b51;
+      border: 1px solid #5275b4;
+      border-radius: 12px;
+      font-size: 22px;
+      touch-action: manipulation;
+      user-select: none;
+    }
+    .direction[data-dir="0"] { grid-column: 2; grid-row: 1; }
+    .direction[data-dir="3"] { grid-column: 1; grid-row: 2; }
+    .direction[data-dir="2"] { grid-column: 2; grid-row: 2; }
+    .direction[data-dir="1"] { grid-column: 3; grid-row: 2; }
+    @media (pointer: coarse) {
+      .touch-controls { display: block; }
+      .instructions { margin-top: 13px; }
+    }
+    @media (max-width: 520px) {
+      .app { width: min(100% - 18px, 660px); padding-top: 15px; }
+      .brand-icon { width: 38px; height: 38px; }
+      .sound-button { padding: 9px; font-size: 12px; }
+      .stats { gap: 5px; }
+      .stat { padding: 7px 6px; border-radius: 9px; }
+      .stat-label { font-size: 10px; }
+      .stat-value { font-size: 17px; }
+      .stat-value.lives { font-size: 15px; letter-spacing: 0; }
+      .game-controls { justify-content: center; }
+      .status { flex-basis: 100%; text-align: center; order: -1; }
+      .instructions { font-size: 12px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-icon" aria-hidden="true"></span>
+        <div>
+          <h1>吃豆人</h1>
+          <p class="subtitle">PAC-MAN · 经典迷宫游戏</p>
+        </div>
+      </div>
+      <button class="sound-button" id="soundButton" type="button" aria-pressed="true">音效：开</button>
+    </header>
+
+    <section class="stats" aria-label="游戏状态">
+      <div class="stat"><span class="stat-label">分数</span><strong class="stat-value" id="score">0</strong></div>
+      <div class="stat"><span class="stat-label">最高分</span><strong class="stat-value" id="best">0</strong></div>
+      <div class="stat"><span class="stat-label">关卡</span><strong class="stat-value" id="level">1</strong></div>
+      <div class="stat"><span class="stat-label">生命</span><strong class="stat-value lives" id="lives">● ● ●</strong></div>
+    </section>
+
+    <div class="board-frame">
+      <canvas id="board" width="588" height="588" aria-label="吃豆人游戏迷宫"></canvas>
+      <div class="overlay" id="overlay">
+        <div class="overlay-card">
+          <h2 class="overlay-title" id="overlayTitle">准备出发</h2>
+          <p class="overlay-text" id="overlayText">吃光豆子，躲开幽灵。<br>吃下大能量豆后可以反过来追它们！</p>
+          <button class="primary-button" id="overlayButton" type="button">开始游戏</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="game-controls">
+      <div class="actions">
+        <button class="primary-button" id="mainButton" type="button">开始游戏</button>
+        <button class="secondary-button" id="restartButton" type="button">重新开始</button>
+      </div>
+      <div class="status" id="status" aria-live="polite">吃光所有豆子即可过关</div>
+    </div>
+
+    <div class="touch-controls" aria-label="触屏方向键">
+      <div class="touch-grid">
+        <button class="direction" data-dir="0" type="button" aria-label="向上">▲</button>
+        <button class="direction" data-dir="3" type="button" aria-label="向左">◀</button>
+        <button class="direction" data-dir="2" type="button" aria-label="向下">▼</button>
+        <button class="direction" data-dir="1" type="button" aria-label="向右">▶</button>
+      </div>
+    </div>
+
+    <p class="instructions">
+      <kbd>方向键</kbd> / <kbd>WASD</kbd> 移动 · <kbd>空格</kbd> / <kbd>P</kbd> 暂停 · <kbd>R</kbd> 重开<br>
+      触屏可使用方向按钮，或在迷宫上滑动。
+    </p>
+  </main>
+
+  <script>
+  (function () {
+    "use strict";
+
+    var MAZE = [
+      "#####################",
+      "#.........#.........#",
+      "#.###.###.#.###.###.#",
+      "#o..#.....#.....#..o#",
+      "###.#.###...###.#.###",
+      "#...#...#...#...#...#",
+      "#.#####.#.#.#.#####.#",
+      "#.......#.#.#.......#",
+      "#.###.###...###.###.#",
+      "#...#...........#...#",
+      "###.#.##.....##.#.###",
+      "#...#...........#...#",
+      "#.###.###...###.###.#",
+      "#.......#.#.#.......#",
+      "#.#####.#.#.#.#####.#",
+      "#...#...#...#...#...#",
+      "###.#.###...###.#.###",
+      "#o..#.....#.....#..o#",
+      "#.###.###.#.###.###.#",
+      "#.........#.........#",
+      "#####################"
+    ];
+    var CELL = 28, SIZE = CELL * 21;
+    var DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
+    var UP = 0, RIGHT = 1, DOWN = 2, LEFT = 3;
+    var board = document.getElementById("board");
+    var ctx = board.getContext("2d");
+    var layer = document.createElement("canvas");
+    var layerCtx = layer.getContext("2d");
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    board.width = layer.width = Math.round(SIZE * dpr);
+    board.height = layer.height = Math.round(SIZE * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    layerCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    var scoreEl = document.getElementById("score");
+    var bestEl = document.getElementById("best");
+    var levelEl = document.getElementById("level");
+    var livesEl = document.getElementById("lives");
+    var statusEl = document.getElementById("status");
+    var overlay = document.getElementById("overlay");
+    var overlayTitle = document.getElementById("overlayTitle");
+    var overlayText = document.getElementById("overlayText");
+    var overlayButton = document.getElementById("overlayButton");
+    var mainButton = document.getElementById("mainButton");
+    var restartButton = document.getElementById("restartButton");
+    var soundButton = document.getElementById("soundButton");
+
+    var cells, dotsLeft, player, ghosts;
+    var score = 0, best = 0, lives = 3, level = 1;
+    var state = "title";
+    var powerUntil = 0, invulnerableUntil = 0;
+    var lastPlayerStep = 0, lastGhostStep = 0, pauseStarted = 0;
+    var soundOn = true, audio = null, lastStatus = "";
+    try { best = Number(localStorage.getItem("pacman-best-v1")) || 0; } catch (error) {}
+
+    function delayPlayer() { return Math.max(94, 142 - (level - 1) * 4); }
+    function delayGhost() { return Math.max(115, 220 - (level - 1) * 9); }
+    function open(x, y) {
+      return x >= 0 && x < 21 && y >= 0 && y < 21 && cells[y][x] !== "#";
+    }
+    function tone(frequency, duration, wave, volume) {
+      if (!soundOn) return;
+      var AudioClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioClass) return;
+      try {
+        if (!audio) audio = new AudioClass();
+        if (audio.state === "suspended") audio.resume();
+        var oscillator = audio.createOscillator();
+        var gain = audio.createGain();
+        var start = audio.currentTime;
+        oscillator.type = wave || "sine";
+        oscillator.frequency.setValueAtTime(frequency, start);
+        gain.gain.setValueAtTime(volume || 0.025, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
+        oscillator.connect(gain);
+        gain.connect(audio.destination);
+        oscillator.start(start);
+        oscillator.stop(start + duration);
+      } catch (error) {}
+    }
+    function setStatus(value) {
+      if (value !== lastStatus) {
+        statusEl.textContent = value;
+        lastStatus = value;
+      }
+    }
+    function saveBest() {
+      if (score > best) {
+        best = score;
+        try { localStorage.setItem("pacman-best-v1", String(best)); } catch (error) {}
+      }
+    }
+    function syncUI() {
+      scoreEl.textContent = String(score);
+      bestEl.textContent = String(best);
+      levelEl.textContent = String(level);
+      livesEl.textContent = Array(lives + 1).join("● ");
+      overlay.classList.toggle("hidden", state === "playing");
+      if (state === "title") {
+        overlayTitle.textContent = "准备出发";
+        overlayText.innerHTML = "吃光豆子，躲开幽灵。<br>吃下大能量豆后可以反过来追它们！";
+        overlayButton.textContent = mainButton.textContent = "开始游戏";
+        setStatus("吃光所有豆子即可过关");
+      } else if (state === "paused") {
+        overlayTitle.textContent = "已暂停";
+        overlayText.textContent = "准备好了就继续前进。";
+        overlayButton.textContent = mainButton.textContent = "继续游戏";
+        setStatus("游戏已暂停");
+      } else if (state === "cleared") {
+        overlayTitle.textContent = "过关！";
+        overlayText.textContent = "漂亮！分数和生命会保留到下一关。";
+        overlayButton.textContent = mainButton.textContent = "下一关";
+        setStatus("所有豆子已收集");
+      } else if (state === "over") {
+        overlayTitle.textContent = "游戏结束";
+        overlayText.textContent = "再试一次，刷新最高分！";
+        overlayButton.textContent = mainButton.textContent = "再玩一次";
+        setStatus("按 Enter 或点击按钮重试");
+      } else {
+        mainButton.textContent = "暂停";
+        setStatus("剩余豆子 " + dotsLeft);
+      }
+    }
+    function roundRect(context, x, y, width, height, radius) {
+      var r = Math.min(radius, width / 2, height / 2);
+      context.beginPath();
+      context.moveTo(x + r, y);
+      context.arcTo(x + width, y, x + width, y + height, r);
+      context.arcTo(x + width, y + height, x, y + height, r);
+      context.arcTo(x, y + height, x, y, r);
+      context.arcTo(x, y, x + width, y, r);
+      context.closePath();
+    }
+    function buildLayer() {
+      var c = layerCtx;
+      var gradient = c.createRadialGradient(SIZE / 2, SIZE / 2, 30, SIZE / 2, SIZE / 2, SIZE);
+      gradient.addColorStop(0, "#101b3b");
+      gradient.addColorStop(1, "#060d22");
+      c.fillStyle = gradient;
+      c.fillRect(0, 0, SIZE, SIZE);
+      c.fillStyle = "#122a68";
+      for (var y = 0; y < 21; y++) {
+        for (var x = 0; x < 21; x++) {
+          if (cells[y][x] === "#") c.fillRect(x * CELL, y * CELL, CELL, CELL);
+        }
+      }
+      c.strokeStyle = "#4f86ff";
+      c.lineWidth = 2.5;
+      c.lineCap = "round";
+      c.shadowColor = "#3774ff";
+      c.shadowBlur = 8;
+      c.beginPath();
+      for (var row = 0; row < 21; row++) {
+        for (var col = 0; col < 21; col++) {
+          if (cells[row][col] !== "#") continue;
+          var px = col * CELL, py = row * CELL, pad = 2;
+          if (open(col, row - 1)) { c.moveTo(px + pad, py + pad); c.lineTo(px + CELL - pad, py + pad); }
+          if (open(col, row + 1)) { c.moveTo(px + pad, py + CELL - pad); c.lineTo(px + CELL - pad, py + CELL - pad); }
+          if (open(col - 1, row)) { c.moveTo(px + pad, py + pad); c.lineTo(px + pad, py + CELL - pad); }
+          if (open(col + 1, row)) { c.moveTo(px + CELL - pad, py + pad); c.lineTo(px + CELL - pad, py + CELL - pad); }
+        }
+      }
+      c.stroke();
+      c.shadowBlur = 0;
+      c.strokeStyle = "#335bb4";
+      c.lineWidth = 2;
+      c.strokeRect(1, 1, SIZE - 2, SIZE - 2);
+    }
+    function resetPositions(now) {
+      player = { x: 10, y: 15, fromX: 10, fromY: 15, dir: LEFT, want: LEFT, movedAt: now };
+      var homes = [[9, 10], [10, 10], [11, 10], [10, 9]];
+      var colors = ["#ff647e", "#f6a4d5", "#5fdbf2", "#ffad5d"];
+      ghosts = homes.map(function (home, index) {
+        return {
+          x: home[0], y: home[1], fromX: home[0], fromY: home[1],
+          homeX: home[0], homeY: home[1], dir: index,
+          color: colors[index], movedAt: now, safeUntil: 0
+        };
+      });
+      powerUntil = 0;
+      invulnerableUntil = now + 1600;
+      lastPlayerStep = lastGhostStep = now;
+    }
+    function newLevel(resetGame) {
+      if (resetGame) { score = 0; lives = 3; level = 1; }
+      cells = MAZE.map(function (row) { return row.split(""); });
+      cells[15][10] = " ";
+      [[9, 10], [10, 10], [11, 10], [10, 9]].forEach(function (point) {
+        cells[point[1]][point[0]] = " ";
+      });
+      dotsLeft = 0;
+      cells.forEach(function (row) {
+        row.forEach(function (tile) { if (tile === "." || tile === "o") dotsLeft++; });
+      });
+      resetPositions(performance.now());
+      buildLayer();
+      syncUI();
+    }
+    function launch() {
+      var now = performance.now();
+      if (state === "playing") { pauseGame(); return; }
+      if (state === "paused") {
+        var pauseDuration = now - pauseStarted;
+        if (powerUntil > pauseStarted) powerUntil += pauseDuration;
+        if (invulnerableUntil > pauseStarted) invulnerableUntil += pauseDuration;
+        ghosts.forEach(function (ghost) {
+          if (ghost.safeUntil > pauseStarted) ghost.safeUntil += pauseDuration;
+          ghost.movedAt += pauseDuration;
+        });
+        player.movedAt += pauseDuration;
+        lastPlayerStep = lastGhostStep = now;
+      } else if (state === "cleared") {
+        level++;
+        newLevel(false);
+      } else if (state === "over") {
+        newLevel(true);
+      } else {
+        invulnerableUntil = now + 1600;
+        lastPlayerStep = lastGhostStep = now;
+      }
+      state = "playing";
+      syncUI();
+      tone(550, 0.10, "triangle", 0.035);
+    }
+    function pauseGame() {
+      if (state !== "playing") return;
+      pauseStarted = performance.now();
+      state = "paused";
+      syncUI();
+    }
+    function restart() {
+      newLevel(true);
+      state = "playing";
+      syncUI();
+      tone(550, 0.10, "triangle", 0.035);
+    }
+    function setDirection(direction) {
+      player.want = direction;
+      if (state === "title") launch();
+    }
+    function collect(now) {
+      var tile = cells[player.y][player.x];
+      if (tile === ".") {
+        score += 10;
+        dotsLeft--;
+        cells[player.y][player.x] = " ";
+        tone(score % 20 ? 430 : 520, 0.045, "sine", 0.012);
+      } else if (tile === "o") {
+        score += 50;
+        dotsLeft--;
+        cells[player.y][player.x] = " ";
+        powerUntil = now + 7000;
+        tone(800, 0.18, "triangle", 0.04);
+      }
+      saveBest();
+      syncUI();
+    }
+    function checkCollision(now) {
+      if (state !== "playing") return false;
+      for (var i = 0; i < ghosts.length; i++) {
+        var ghost = ghosts[i];
+        if (ghost.x !== player.x || ghost.y !== player.y || ghost.safeUntil > now) continue;
+        if (powerUntil > now) {
+          score += 200;
+          saveBest();
+          ghost.x = ghost.fromX = ghost.homeX;
+          ghost.y = ghost.fromY = ghost.homeY;
+          ghost.movedAt = now;
+          ghost.safeUntil = now + 1100;
+          tone(950, 0.17, "square", 0.025);
+          syncUI();
+        } else if (invulnerableUntil <= now) {
+          lives--;
+          if (lives <= 0) state = "over";
+          else resetPositions(now);
+          tone(190, 0.32, "sawtooth", 0.045);
+          syncUI();
+          return true;
+        }
+      }
+      return false;
+    }
+    function stepPlayer(now) {
+      var wanted = player.want;
+      if (open(player.x + DX[wanted], player.y + DY[wanted])) player.dir = wanted;
+      var nextX = player.x + DX[player.dir], nextY = player.y + DY[player.dir];
+      if (!open(nextX, nextY)) return;
+      player.fromX = player.x;
+      player.fromY = player.y;
+      player.x = nextX;
+      player.y = nextY;
+      player.movedAt = now;
+      collect(now);
+      if (checkCollision(now)) return;
+      if (dotsLeft === 0 && state === "playing") {
+        state = "cleared";
+        tone(660, 0.17, "triangle", 0.04);
+        setTimeout(function () { tone(880, 0.2, "triangle", 0.04); }, 120);
+        syncUI();
+      }
+    }
+    function chooseGhostDirection(ghost, index, now) {
+      var choices = [];
+      for (var d = 0; d < 4; d++) {
+        if (open(ghost.x + DX[d], ghost.y + DY[d])) choices.push(d);
+      }
+      if (choices.length === 0) return -1;
+      var candidates = choices.length > 1 ?
+        choices.filter(function (d) { return d !== (ghost.dir + 2) % 4; }) : choices;
+      if (candidates.length === 0) candidates = choices;
+      if (index === 2 && Math.random() < 0.30) {
+        return candidates[Math.floor(Math.random() * candidates.length)];
+      }
+      var tx = player.x, ty = player.y;
+      if (index === 1) {
+        tx += DX[player.dir] * 3;
+        ty += DY[player.dir] * 3;
+      } else if (index === 3 && Math.abs(ghost.x - tx) + Math.abs(ghost.y - ty) > 7) {
+        tx = 1; ty = 19;
+      }
+      var frightened = powerUntil > now;
+      var best = candidates[0], bestValue = frightened ? -Infinity : Infinity;
+      candidates.forEach(function (direction) {
+        var distance = Math.abs(ghost.x + DX[direction] - tx) +
+                       Math.abs(ghost.y + DY[direction] - ty);
+        var value = distance * 20 + Math.random() * 12;
+        if ((frightened && value > bestValue) || (!frightened && value < bestValue)) {
+          best = direction;
+          bestValue = value;
+        }
+      });
+      return best;
+    }
+    function stepGhosts(now) {
+      for (var i = 0; i < ghosts.length && state === "playing"; i++) {
+        var ghost = ghosts[i];
+        var direction = chooseGhostDirection(ghost, i, now);
+        if (direction >= 0) {
+          ghost.fromX = ghost.x;
+          ghost.fromY = ghost.y;
+          ghost.dir = direction;
+          ghost.x += DX[direction];
+          ghost.y += DY[direction];
+          ghost.movedAt = now;
+        }
+        if (checkCollision(now)) return;
+      }
+    }
+    function interpolated(entity, now, delay) {
+      var portion = Math.max(0, Math.min(1, (now - entity.movedAt) / delay));
+      return {
+        x: (entity.fromX + (entity.x - entity.fromX) * portion + 0.5) * CELL,
+        y: (entity.fromY + (entity.y - entity.fromY) * portion + 0.5) * CELL
+      };
+    }
+    function drawPlayer(now) {
+      if (invulnerableUntil > now && Math.floor(now / 115) % 2 === 0) return;
+      var p = interpolated(player, now, delayPlayer());
+      var facing = [-Math.PI / 2, 0, Math.PI / 2, Math.PI][player.dir];
+      var mouth = 0.18 + 0.20 * Math.abs(Math.sin(now / 105));
+      ctx.save();
+      ctx.fillStyle = "#ffdc50";
+      ctx.shadowColor = "#ffcb35";
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.arc(p.x, p.y, 11.5, facing + mouth, facing + 2 * Math.PI - mouth);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+    function drawGhost(ghost, now) {
+      var p = interpolated(ghost, now, delayGhost());
+      var frightened = powerUntil > now && ghost.safeUntil <= now;
+      var flashing = frightened && powerUntil - now < 1700 && Math.floor(now / 180) % 2;
+      ctx.save();
+      ctx.fillStyle = frightened ? (flashing ? "#f5f7ff" : "#5266ef") : ghost.color;
+      ctx.shadowColor = ctx.fillStyle;
+      ctx.shadowBlur = 7;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y - 2, 10, Math.PI, 0);
+      ctx.lineTo(p.x + 10, p.y + 10);
+      ctx.lineTo(p.x + 6, p.y + 7);
+      ctx.lineTo(p.x + 2, p.y + 10);
+      ctx.lineTo(p.x - 2, p.y + 7);
+      ctx.lineTo(p.x - 6, p.y + 10);
+      ctx.lineTo(p.x - 10, p.y + 7);
+      ctx.closePath();
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      if (frightened) {
+        ctx.fillStyle = flashing ? "#5266ef" : "#fff";
+        ctx.beginPath();
+        ctx.arc(p.x - 4, p.y - 1, 1.7, 0, Math.PI * 2);
+        ctx.arc(p.x + 4, p.y - 1, 1.7, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.arc(p.x - 4, p.y - 3, 3.7, 0, Math.PI * 2);
+        ctx.arc(p.x + 4, p.y - 3, 3.7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#273b8f";
+        ctx.beginPath();
+        ctx.arc(p.x - 4 + DX[ghost.dir], p.y - 3 + DY[ghost.dir], 1.8, 0, Math.PI * 2);
+        ctx.arc(p.x + 4 + DX[ghost.dir], p.y - 3 + DY[ghost.dir], 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+    function render(now) {
+      ctx.clearRect(0, 0, SIZE, SIZE);
+      ctx.drawImage(layer, 0, 0, SIZE, SIZE);
+      for (var y = 0; y < 21; y++) {
+        for (var x = 0; x < 21; x++) {
+          var tile = cells[y][x];
+          if (tile !== "." && tile !== "o") continue;
+          var cx = (x + 0.5) * CELL, cy = (y + 0.5) * CELL;
+          ctx.save();
+          ctx.fillStyle = tile === "o" ? "#ffda69" : "#ffd9a9";
+          if (tile === "o") {
+            ctx.shadowColor = "#ffcf61";
+            ctx.shadowBlur = 15;
+          }
+          ctx.beginPath();
+          ctx.arc(cx, cy, tile === "o" ? 6.4 + Math.sin(now / 170) * 1.3 : 2.8, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+      ghosts.forEach(function (ghost) { drawGhost(ghost, now); });
+      drawPlayer(now);
+    }
+    function frame(now) {
+      if (state === "playing") {
+        if (now - lastPlayerStep >= delayPlayer()) {
+          lastPlayerStep = now;
+          stepPlayer(now);
+        }
+        if (state === "playing" && now - lastGhostStep >= delayGhost()) {
+          lastGhostStep = now;
+          stepGhosts(now);
+        }
+        if (state === "playing") {
+          setStatus(powerUntil > now ?
+            "能量模式 · " + Math.ceil((powerUntil - now) / 1000) + " 秒" :
+            "剩余豆子 " + dotsLeft);
+        }
+      }
+      render(state === "paused" ? pauseStarted : now);
+      requestAnimationFrame(frame);
+    }
+
+    var keyDirections = {
+      arrowup: UP, w: UP,
+      arrowright: RIGHT, d: RIGHT,
+      arrowdown: DOWN, s: DOWN,
+      arrowleft: LEFT, a: LEFT
+    };
+    window.addEventListener("keydown", function (event) {
+      var key = event.key.toLowerCase();
+      if (Object.prototype.hasOwnProperty.call(keyDirections, key)) {
+        event.preventDefault();
+        setDirection(keyDirections[key]);
+      } else if (key === "enter" && !event.repeat) {
+        event.preventDefault();
+        if (state !== "playing") launch();
+      } else if ((key === " " || key === "p") && !event.repeat) {
+        event.preventDefault();
+        if (state === "playing") pauseGame();
+        else if (state === "paused") launch();
+      } else if (key === "r" && !event.repeat) {
+        event.preventDefault();
+        restart();
+      }
+    });
+    window.addEventListener("blur", pauseGame);
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) pauseGame();
+    });
+    mainButton.addEventListener("click", launch);
+    overlayButton.addEventListener("click", launch);
+    restartButton.addEventListener("click", restart);
+    soundButton.addEventListener("click", function () {
+      soundOn = !soundOn;
+      soundButton.textContent = soundOn ? "音效：开" : "音效：关";
+      soundButton.setAttribute("aria-pressed", String(soundOn));
+      if (soundOn) tone(660, 0.08, "triangle", 0.025);
+    });
+    Array.prototype.forEach.call(document.querySelectorAll(".direction"), function (button) {
+      button.addEventListener("pointerdown", function (event) {
+        event.preventDefault();
+        setDirection(Number(button.getAttribute("data-dir")));
+      });
+      button.addEventListener("click", function () {
+        setDirection(Number(button.getAttribute("data-dir")));
+      });
+    });
+    var swipeStart = null;
+    board.addEventListener("pointerdown", function (event) {
+      swipeStart = { x: event.clientX, y: event.clientY };
+    });
+    board.addEventListener("pointerup", function (event) {
+      if (!swipeStart) return;
+      var dx = event.clientX - swipeStart.x;
+      var dy = event.clientY - swipeStart.y;
+      swipeStart = null;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return;
+      setDirection(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? RIGHT : LEFT) : (dy > 0 ? DOWN : UP));
+    });
+
+    newLevel(true);
+    state = "title";
+    syncUI();
+    requestAnimationFrame(frame);
+  })();
+  </script>
+</body>
+</html>
